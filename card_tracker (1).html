@@ -1,0 +1,1115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCG Artist Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #14171f;
+    --surface2:  #1c2030;
+    --border:    #252a38;
+    --accent:    #e8c84a;
+    --accent2:   #4ae8a8;
+    --accent3:   #e84a7a;
+    --text:      #e8ecf5;
+    --muted:     #6b738a;
+    --owned-bg:  #0e2018;
+    --owned-bdr: #1e5a35;
+    --card-r:    12px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: 15px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    height: 64px;
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.7rem;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .logo span { color: var(--text); }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    justify-content: flex-end;
+  }
+  .search-wrap {
+    position: relative;
+    flex: 1;
+    max-width: 380px;
+  }
+  .search-wrap svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    pointer-events: none;
+  }
+  #search {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem 0.55rem 2.4rem;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color .15s;
+  }
+  #search:focus { border-color: var(--accent); }
+  #search::placeholder { color: var(--muted); }
+  .stats-bar {
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .stat { text-align: center; line-height: 1.2; }
+  .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; letter-spacing: 0.05em; }
+  .stat-num.gold  { color: var(--accent); }
+  .stat-num.green { color: var(--accent2); }
+  .stat-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* ── PROGRESS ── */
+  .progress-section {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 2rem;
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+  }
+  .progress-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .progress-label { font-size: 0.72rem; color: var(--muted); white-space: nowrap; width: 70px; flex-shrink: 0; }
+  .progress-bar-wrap { flex: 1; background: var(--bg); border-radius: 4px; height: 6px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 4px; transition: width .4s ease; }
+  .fill-yuka   { background: var(--accent); }
+  .fill-shinji { background: var(--accent2); }
+  .fill-asako  { background: var(--accent3); }
+  .progress-pct { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: var(--text); width: 36px; text-align: right; flex-shrink: 0; }
+
+  /* ── TOOLBAR ── */
+  .toolbar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0.65rem 2rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .filter-label { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-right: 0.25rem; }
+  .chip {
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    border-radius: 20px;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.78rem;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: #0d0f14; font-weight: 600; }
+  .chip.artist-yuka.active   { background: #e8c84a; border-color: #e8c84a; }
+  .chip.artist-shinji.active { background: #4ae8a8; border-color: #4ae8a8; }
+  .chip.artist-asako.active  { background: #e84a7a; border-color: #e84a7a; }
+  .sep { width: 1px; height: 20px; background: var(--border); margin: 0 0.25rem; }
+  .sort-select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 0.3rem 0.65rem;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.78rem;
+    outline: none;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+  .sort-select:focus { border-color: var(--accent); }
+  .btn-mark-all {
+    margin-left: auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.78rem;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-mark-all:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* ── VIEW TOGGLE ── */
+  .view-toggle { display: flex; gap: 4px; margin-left: 0.5rem; }
+  .view-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    width: 30px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .view-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .view-btn.active { background: var(--accent); border-color: var(--accent); color: #0d0f14; }
+
+  /* ── MAIN ── */
+  main { padding: 1.5rem 2rem; }
+  .result-info { font-size: 0.78rem; color: var(--muted); margin-bottom: 1rem; font-family: 'DM Mono', monospace; }
+
+  /* ── GRID VIEW ── */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+  }
+
+  /* ── CARD (grid) ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-r);
+    cursor: pointer;
+    transition: transform .18s, border-color .15s, box-shadow .18s;
+    position: relative;
+    user-select: none;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: var(--muted);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .card.owned {
+    background: var(--owned-bg);
+    border-color: var(--owned-bdr);
+  }
+  .card.owned:hover { border-color: var(--accent2); box-shadow: 0 8px 24px rgba(74,232,168,0.12); }
+
+  /* Card image area */
+  .card-img-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 2.5 / 3.5;
+    background: var(--bg);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .card-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity .3s, transform .3s;
+    opacity: 0;
+  }
+  .card-img.loaded { opacity: 1; }
+  .card:hover .card-img.loaded { transform: scale(1.03); }
+
+  /* Placeholder while loading */
+  .card-img-placeholder {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface2);
+    transition: opacity .3s;
+  }
+  .card-img-placeholder.hidden { opacity: 0; pointer-events: none; }
+  .card-img-placeholder svg { opacity: 0.2; }
+
+  /* Owned overlay on image */
+  .owned-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(74,232,168,0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity .2s;
+    pointer-events: none;
+  }
+  .card.owned .owned-overlay { opacity: 1; }
+  .owned-overlay-check {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--accent2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 12px rgba(74,232,168,0.5);
+  }
+
+  /* Artist color bar on top of card image */
+  .artist-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    z-index: 2;
+  }
+  .ab-yuka   { background: var(--accent); }
+  .ab-shinji { background: var(--accent2); }
+  .ab-asako  { background: var(--accent3); }
+
+  /* Card info section */
+  .card-info {
+    padding: 0.65rem 0.75rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex: 1;
+  }
+  .card-name {
+    font-weight: 600;
+    font-size: 0.85rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .card-set-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem;
+  }
+  .card-set { font-size: 0.72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .card-num { font-family: 'DM Mono', monospace; font-size: 0.68rem; color: var(--muted); opacity: 0.65; white-space: nowrap; }
+  .card-footer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 0.2rem;
+  }
+  .artist-tag {
+    font-size: 0.64rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 20px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    white-space: nowrap;
+  }
+  .artist-yuka   { background: rgba(232,200,74,0.15);  color: #e8c84a; }
+  .artist-shinji { background: rgba(74,232,168,0.15);  color: #4ae8a8; }
+  .artist-asako  { background: rgba(232,74,122,0.15);  color: #e84a7a; }
+  .hp-tag { font-family: 'DM Mono', monospace; font-size: 0.67rem; color: var(--muted); }
+  .serebii-link {
+    font-size: 0.64rem;
+    color: var(--muted);
+    text-decoration: none;
+    opacity: 0.55;
+    transition: opacity .15s, color .15s;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .serebii-link:hover { opacity: 1; color: var(--accent); }
+
+  /* ── LIST VIEW ── */
+  body.list-view .grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+  body.list-view .card {
+    flex-direction: row;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-bottom: 1px solid var(--border);
+  }
+  body.list-view .card:first-child { border-top: 1px solid var(--border); border-radius: 8px 8px 0 0; }
+  body.list-view .card:last-child  { border-radius: 0 0 8px 8px; }
+  body.list-view .card:hover { transform: none; box-shadow: none; background: var(--surface2); }
+  body.list-view .card.owned:hover { background: #112819; }
+  body.list-view .card-img-wrap {
+    width: 54px;
+    aspect-ratio: unset;
+    height: 76px;
+    flex-shrink: 0;
+    border-radius: 0;
+  }
+  body.list-view .card-img { object-fit: cover; }
+  body.list-view .artist-bar { top: 0; left: 0; right: unset; bottom: 0; width: 3px; height: 100%; }
+  body.list-view .card-info {
+    flex-direction: row;
+    align-items: center;
+    padding: 0 1rem;
+    gap: 1rem;
+    flex: 1;
+  }
+  body.list-view .card-name { font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 160px; flex-shrink: 0; }
+  body.list-view .card-set { font-size: 0.78rem; flex: 1; }
+  body.list-view .card-set-row { flex: 1; gap: 0.5rem; }
+  body.list-view .card-footer-row { flex-shrink: 0; gap: 1rem; }
+  body.list-view .owned-overlay { border-radius: 0; }
+  body.list-view .owned-overlay-check { width: 28px; height: 28px; }
+  body.list-view .owned-overlay-check svg { width: 14px; height: 14px; }
+
+  /* ── EMPTY STATE ── */
+  .empty { text-align: center; padding: 5rem 2rem; color: var(--muted); }
+  .empty-icon { font-size: 3rem; margin-bottom: 1rem; }
+  .empty h2 { font-family: 'Bebas Neue', sans-serif; font-size: 1.8rem; letter-spacing: 0.05em; margin-bottom: 0.5rem; color: var(--text); }
+
+  /* ── LIGHTBOX ── */
+  .lightbox {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .lightbox.open { display: flex; }
+  .lightbox-inner {
+    display: flex;
+    gap: 2rem;
+    align-items: flex-start;
+    max-width: 700px;
+    width: 100%;
+    padding: 2rem;
+    position: relative;
+  }
+  .lightbox-img-wrap {
+    flex-shrink: 0;
+    width: 240px;
+  }
+  .lightbox-img {
+    width: 100%;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    display: block;
+  }
+  .lightbox-details {
+    flex: 1;
+    padding-top: 0.5rem;
+  }
+  .lb-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2rem;
+    letter-spacing: 0.05em;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+  }
+  .lb-set { font-size: 0.9rem; color: var(--muted); margin-bottom: 1rem; }
+  .lb-meta { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .lb-row { display: flex; gap: 0.75rem; font-size: 0.82rem; }
+  .lb-label { color: var(--muted); width: 70px; flex-shrink: 0; }
+  .lb-val { color: var(--text); }
+  .lb-toggle {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 8px;
+    border: 2px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    margin-bottom: 0.75rem;
+  }
+  .lb-toggle:hover { border-color: var(--accent2); color: var(--accent2); }
+  .lb-toggle.owned-btn { background: var(--owned-bg); border-color: var(--owned-bdr); color: var(--accent2); }
+  .lb-toggle.owned-btn:hover { border-color: var(--accent3); color: var(--accent3); background: #2a0d15; }
+  .lb-serebii {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-decoration: none;
+    transition: color .15s;
+  }
+  .lb-serebii:hover { color: var(--accent); }
+  .lightbox-close {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: all .15s;
+  }
+  .lightbox-close:hover { background: var(--surface2); color: var(--text); border-color: var(--muted); }
+
+  @media (max-width: 700px) {
+    header { padding: 0 1rem; }
+    .toolbar { padding: 0.65rem 1rem; }
+    main { padding: 1rem; }
+    .stats-bar { gap: 0.75rem; }
+    .progress-section { flex-direction: column; gap: 0.5rem; padding: 0.75rem 1rem; }
+    .progress-item { width: 100%; }
+    .logo { font-size: 1.3rem; }
+    .lightbox-inner { flex-direction: column; align-items: center; }
+    .lightbox-img-wrap { width: 180px; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 0.65rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">TCG<span>Tracker</span></div>
+  <div class="header-right">
+    <div class="search-wrap">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="search" type="text" placeholder="Search cards, sets, artists…" autocomplete="off">
+    </div>
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-num gold" id="stat-owned">0</div><div class="stat-label">Owned</div></div>
+      <div class="stat"><div class="stat-num" id="stat-total">213</div><div class="stat-label">Total</div></div>
+      <div class="stat"><div class="stat-num green" id="stat-pct">0%</div><div class="stat-label">Complete</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="progress-section">
+  <div class="progress-item">
+    <div class="progress-label" style="color:#e8c84a;">Yuka Morii</div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill fill-yuka" id="bar-yuka" style="width:0%"></div></div>
+    <div class="progress-pct" id="pct-yuka">0%</div>
+  </div>
+  <div class="progress-item">
+    <div class="progress-label" style="color:#4ae8a8;">Shinji Kanda</div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill fill-shinji" id="bar-shinji" style="width:0%"></div></div>
+    <div class="progress-pct" id="pct-shinji">0%</div>
+  </div>
+  <div class="progress-item">
+    <div class="progress-label" style="color:#e84a7a;">Asako Ito</div>
+    <div class="progress-bar-wrap"><div class="progress-bar-fill fill-asako" id="bar-asako" style="width:0%"></div></div>
+    <div class="progress-pct" id="pct-asako">0%</div>
+  </div>
+</div>
+
+<div class="toolbar">
+  <span class="filter-label">Artist</span>
+  <button class="chip active" data-artist="all">All</button>
+  <button class="chip artist-yuka"   data-artist="Yuka Morii">Yuka Morii</button>
+  <button class="chip artist-shinji" data-artist="Shinji Kanda">Shinji Kanda</button>
+  <button class="chip artist-asako"  data-artist="Asako Ito">Asako Ito</button>
+  <div class="sep"></div>
+  <span class="filter-label">Status</span>
+  <button class="chip active" data-owned="all">All</button>
+  <button class="chip" data-owned="owned">Owned</button>
+  <button class="chip" data-owned="missing">Missing</button>
+  <div class="sep"></div>
+  <span class="filter-label">Sort</span>
+  <select class="sort-select" id="sort">
+    <option value="name">Name A–Z</option>
+    <option value="set">Set Name</option>
+    <option value="artist">Artist</option>
+    <option value="hp-desc">HP High→Low</option>
+    <option value="hp-asc">HP Low→High</option>
+  </select>
+  <div class="sep"></div>
+  <div class="view-toggle">
+    <button class="view-btn active" id="btn-grid" title="Grid view">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="0" y="0" width="6" height="6" rx="1"/><rect x="10" y="0" width="6" height="6" rx="1"/><rect x="0" y="10" width="6" height="6" rx="1"/><rect x="10" y="10" width="6" height="6" rx="1"/></svg>
+    </button>
+    <button class="view-btn" id="btn-list" title="List view">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><rect x="0" y="0" width="16" height="3" rx="1"/><rect x="0" y="6" width="16" height="3" rx="1"/><rect x="0" y="12" width="16" height="3" rx="1"/></svg>
+    </button>
+  </div>
+  <button class="btn-mark-all" id="btn-mark-visible">✓ Mark Visible as Owned</button>
+</div>
+
+<main>
+  <div class="result-info" id="result-info"></div>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">
+    <div class="empty-icon">🔍</div>
+    <h2>No cards found</h2>
+    <p>Try a different search or filter.</p>
+  </div>
+</main>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-inner">
+    <button class="lightbox-close" id="lb-close">✕</button>
+    <div class="lightbox-img-wrap">
+      <img class="lightbox-img" id="lb-img" src="" alt="">
+    </div>
+    <div class="lightbox-details">
+      <div class="lb-name" id="lb-name"></div>
+      <div class="lb-set" id="lb-set"></div>
+      <div class="lb-meta">
+        <div class="lb-row"><span class="lb-label">Card #</span><span class="lb-val" id="lb-num"></span></div>
+        <div class="lb-row"><span class="lb-label">HP</span><span class="lb-val" id="lb-hp"></span></div>
+        <div class="lb-row"><span class="lb-label">Artist</span><span class="lb-val" id="lb-artist"></span></div>
+      </div>
+      <button class="lb-toggle" id="lb-toggle">Mark as Owned</button>
+      <br>
+      <a class="lb-serebii" id="lb-link" href="#" target="_blank" rel="noopener">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        View on Serebii
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+const RAW = [{"Card Name":"Nymble","Set Name":"Phantasmal Flames","Card Number":"9","Set Total":"94","HP":"50HP","URL":"https://www.serebii.net/card/phantasmalflames/009.shtml","artist":"Yuka Morii","owned":false,"id":0},{"Card Name":"Helioptile","Set Name":"Mega Evolution","Card Number":"52","Set Total":"132","HP":"70HP","URL":"https://www.serebii.net/card/megaevolution/052.shtml","artist":"Yuka Morii","owned":false,"id":1},{"Card Name":"Durant","Set Name":"White Flare","Card Number":"70","Set Total":"86","HP":"","URL":"https://www.serebii.net/card/whiteflare/070.shtml","artist":"Yuka Morii","owned":false,"id":2},{"Card Name":"Klinklang","Set Name":"Black Bolt","Card Number":"141","Set Total":"86","HP":"","URL":"https://www.serebii.net/card/blackbolt/141.shtml","artist":"Yuka Morii","owned":false,"id":3},{"Card Name":"Smoliv","Set Name":"Destined Rivals","Card Number":"21","Set Total":"182","HP":"60HP","URL":"https://www.serebii.net/card/destinedrivals/021.shtml","artist":"Yuka Morii","owned":false,"id":4},{"Card Name":"Karrablast","Set Name":"Journey Together","Card Number":"9","Set Total":"159","HP":"60HP","URL":"https://www.serebii.net/card/journeytogether/009.shtml","artist":"Yuka Morii","owned":false,"id":5},{"Card Name":"Applin","Set Name":"Surging Sparks","Card Number":"138","Set Total":"191","HP":"40HP","URL":"https://www.serebii.net/card/surgingsparks/138.shtml","artist":"Yuka Morii","owned":false,"id":6},{"Card Name":"Chewtle","Set Name":"Stellar Crown","Card Number":"43","Set Total":"142","HP":"80HP","URL":"https://www.serebii.net/card/stellarcrown/043.shtml","artist":"Yuka Morii","owned":false,"id":7},{"Card Name":"Meltan","Set Name":"Stellar Crown","Card Number":"102","Set Total":"142","HP":"60HP","URL":"https://www.serebii.net/card/stellarcrown/102.shtml","artist":"Yuka Morii","owned":false,"id":8},{"Card Name":"Froakie","Set Name":"Twilight Masquerade","Card Number":"56","Set Total":"167","HP":"60HP","URL":"https://www.serebii.net/card/twilightmasquerade/056.shtml","artist":"Yuka Morii","owned":false,"id":9},{"Card Name":"Minccino","Set Name":"Temporal Forces","Card Number":"136","Set Total":"162","HP":"70HP","URL":"https://www.serebii.net/card/temporalforces/136.shtml","artist":"Yuka Morii","owned":false,"id":10},{"Card Name":"Octillery","Set Name":"Paradox Rift","Card Number":"34","Set Total":"182","HP":"110HP","URL":"https://www.serebii.net/card/paradoxrift/034.shtml","artist":"Yuka Morii","owned":false,"id":11},{"Card Name":"Toxel","Set Name":"Paradox Rift","Card Number":"69","Set Total":"182","HP":"70HP","URL":"https://www.serebii.net/card/paradoxrift/069.shtml","artist":"Yuka Morii","owned":false,"id":12},{"Card Name":"Aipom","Set Name":"Paradox Rift","Card Number":"211","Set Total":"182","HP":"60HP","URL":"https://www.serebii.net/card/paradoxrift/211.shtml","artist":"Yuka Morii","owned":false,"id":13},{"Card Name":"Magnemite","Set Name":"151","Card Number":"81","Set Total":"165","HP":"60HP","URL":"https://www.serebii.net/card/151/081.shtml","artist":"Yuka Morii","owned":false,"id":14},{"Card Name":"Magneton","Set Name":"151","Card Number":"82","Set Total":"165","HP":"90HP","URL":"https://www.serebii.net/card/151/082.shtml","artist":"Yuka Morii","owned":false,"id":15},{"Card Name":"Larvesta","Set Name":"Obsidian Flames","Card Number":"40","Set Total":"197","HP":"80HP","URL":"https://www.serebii.net/card/obsidianflames/040.shtml","artist":"Yuka Morii","owned":false,"id":16},{"Card Name":"Clefairy","Set Name":"Obsidian Flames","Card Number":"81","Set Total":"197","HP":"60HP","URL":"https://www.serebii.net/card/obsidianflames/081.shtml","artist":"Yuka Morii","owned":false,"id":17},{"Card Name":"Sinistea","Set Name":"Obsidian Flames","Card Number":"97","Set Total":"197","HP":"30HP","URL":"https://www.serebii.net/card/obsidianflames/097.shtml","artist":"Yuka Morii","owned":false,"id":18},{"Card Name":"Lillipup","Set Name":"Obsidian Flames","Card Number":"170","Set Total":"197","HP":"50HP","URL":"https://www.serebii.net/card/obsidianflames/170.shtml","artist":"Yuka Morii","owned":false,"id":19},{"Card Name":"Pincurchin","Set Name":"Paldea Evolved","Card Number":"72","Set Total":"198","HP":"80HP","URL":"https://www.serebii.net/card/paldeaevolved/072.shtml","artist":"Yuka Morii","owned":false,"id":20},{"Card Name":"Stonjourner","Set Name":"Scarlet Violet","Card Number":"121","Set Total":"198","HP":"130HP","URL":"https://www.serebii.net/card/scarletviolet/121.shtml","artist":"Yuka Morii","owned":false,"id":21},{"Card Name":"Starly","Set Name":"Scarlet Violet","Card Number":"148","Set Total":"198","HP":"60HP","URL":"https://www.serebii.net/card/scarletviolet/148.shtml","artist":"Yuka Morii","owned":false,"id":22},{"Card Name":"Pawniard","Set Name":"Crown Zenith","Card Number":"92","Set Total":"159","HP":"70HP","URL":"https://www.serebii.net/card/crownzenith/092.shtml","artist":"Yuka Morii","owned":false,"id":23},{"Card Name":"Drapion V","Set Name":"Crown Zenith","Card Number":"GG49","Set Total":"GG70","HP":"210HP","URL":"https://www.serebii.net/card/crownzenith/H49.shtml","artist":"Yuka Morii","owned":false,"id":24},{"Card Name":"Baltoy","Set Name":"Silver Tempest","Card Number":"93","Set Total":"195","HP":"50HP","URL":"https://www.serebii.net/card/silvertempest/093.shtml","artist":"Yuka Morii","owned":false,"id":25},{"Card Name":"Seedot","Set Name":"Lost Origin","Card Number":"11","Set Total":"196","HP":"50HP","URL":"https://www.serebii.net/card/lostorigin/011.shtml","artist":"Yuka Morii","owned":false,"id":26},{"Card Name":"Litwick","Set Name":"Lost Origin","Card Number":"24","Set Total":"196","HP":"60HP","URL":"https://www.serebii.net/card/lostorigin/024.shtml","artist":"Yuka Morii","owned":false,"id":27},{"Card Name":"Ducklett","Set Name":"Lost Origin","Card Number":"46","Set Total":"196","HP":"60HP","URL":"https://www.serebii.net/card/lostorigin/046.shtml","artist":"Yuka Morii","owned":false,"id":28},{"Card Name":"Machop","Set Name":"Lost Origin","Card Number":"86","Set Total":"196","HP":"70HP","URL":"https://www.serebii.net/card/lostorigin/086.shtml","artist":"Yuka Morii","owned":false,"id":29},{"Card Name":"Murkrow","Set Name":"Lost Origin","Card Number":"114","Set Total":"196","HP":"60HP","URL":"https://www.serebii.net/card/lostorigin/114.shtml","artist":"Yuka Morii","owned":false,"id":30},{"Card Name":"Spinarak","Set Name":"Pokemon GO","Card Number":"6","Set Total":"78","HP":"60HP","URL":"https://www.serebii.net/card/pokemongo/006.shtml","artist":"Yuka Morii","owned":false,"id":31},{"Card Name":"Shieldon","Set Name":"Astral Radiance","Card Number":"109","Set Total":"189","HP":"100HP","URL":"https://www.serebii.net/card/astralradiance/109.shtml","artist":"Yuka Morii","owned":false,"id":32},{"Card Name":"Wormadam","Set Name":"Brilliant Stars","Card Number":"10","Set Total":"172","HP":"110HP","URL":"https://www.serebii.net/card/brilliantstars/010.shtml","artist":"Yuka Morii","owned":false,"id":33},{"Card Name":"Staryu","Set Name":"Brilliant Stars","Card Number":"30","Set Total":"172","HP":"60HP","URL":"https://www.serebii.net/card/brilliantstars/030.shtml","artist":"Yuka Morii","owned":false,"id":34},{"Card Name":"Snom","Set Name":"Fusion Strike","Card Number":"84","Set Total":"264","HP":"40HP","URL":"https://www.serebii.net/card/fusionstrike/084.shtml","artist":"Yuka Morii","owned":false,"id":35},{"Card Name":"Tynamo","Set Name":"Fusion Strike","Card Number":"95","Set Total":"264","HP":"40HP","URL":"https://www.serebii.net/card/fusionstrike/095.shtml","artist":"Yuka Morii","owned":false,"id":36},{"Card Name":"Sandshrew","Set Name":"Fusion Strike","Card Number":"131","Set Total":"264","HP":"60HP","URL":"https://www.serebii.net/card/fusionstrike/131.shtml","artist":"Yuka Morii","owned":false,"id":37},{"Card Name":"Woobat","Set Name":"Evolving Skies","Card Number":"68","Set Total":"225","HP":"60HP","URL":"https://www.serebii.net/card/evolvingskies/068.shtml","artist":"Yuka Morii","owned":false,"id":38},{"Card Name":"Pumpkaboo","Set Name":"Evolving Skies","Card Number":"76","Set Total":"225","HP":"60HP","URL":"https://www.serebii.net/card/evolvingskies/076.shtml","artist":"Yuka Morii","owned":false,"id":39},{"Card Name":"Castform Sunny Form","Set Name":"Chilling Reign","Card Number":"22","Set Total":"198","HP":"70HP","URL":"https://www.serebii.net/card/chillingreign/022.shtml","artist":"Yuka Morii","owned":false,"id":40},{"Card Name":"Clobbopus","Set Name":"Chilling Reign","Card Number":"91","Set Total":"198","HP":"70HP","URL":"https://www.serebii.net/card/chillingreign/091.shtml","artist":"Yuka Morii","owned":false,"id":41},{"Card Name":"Salandit","Set Name":"Battle Styles","Card Number":"27","Set Total":"163","HP":"70HP","URL":"https://www.serebii.net/card/battlestyles/027.shtml","artist":"Yuka Morii","owned":false,"id":42},{"Card Name":"Sizzlipede","Set Name":"Battle Styles","Card Number":"29","Set Total":"163","HP":"70HP","URL":"https://www.serebii.net/card/battlestyles/029.shtml","artist":"Yuka Morii","owned":false,"id":43},{"Card Name":"Dedenne","Set Name":"Vivid Voltage","Card Number":"77","Set Total":"180","HP":"70HP","URL":"https://www.serebii.net/card/vividvoltage/077.shtml","artist":"Yuka Morii","owned":false,"id":44},{"Card Name":"Drilbur","Set Name":"Vivid Voltage","Card Number":"91","Set Total":"180","HP":"70HP","URL":"https://www.serebii.net/card/vividvoltage/091.shtml","artist":"Yuka Morii","owned":false,"id":45},{"Card Name":"Taillow","Set Name":"Vivid Voltage","Card Number":"133","Set Total":"180","HP":"60HP","URL":"https://www.serebii.net/card/vividvoltage/133.shtml","artist":"Yuka Morii","owned":false,"id":46},{"Card Name":"Weedle","Set Name":"Champion's Path","Card Number":"2","Set Total":"70","HP":"60HP","URL":"https://www.serebii.net/card/champion'spath/002.shtml","artist":"Yuka Morii","owned":false,"id":47},{"Card Name":"Bounsweet","Set Name":"Darkness Ablaze","Card Number":"14","Set Total":"189","HP":"60HP","URL":"https://www.serebii.net/card/darknessablaze/014.shtml","artist":"Yuka Morii","owned":false,"id":48},{"Card Name":"Torchic","Set Name":"Darkness Ablaze","Card Number":"22","Set Total":"189","HP":"60HP","URL":"https://www.serebii.net/card/darknessablaze/022.shtml","artist":"Yuka Morii","owned":false,"id":49},{"Card Name":"Sandygast","Set Name":"Rebel Clash","Card Number":"81","Set Total":"192","HP":"80HP","URL":"https://www.serebii.net/card/rebelclash/081.shtml","artist":"Yuka Morii","owned":false,"id":50},{"Card Name":"Bunnelby","Set Name":"Rebel Clash","Card Number":"146","Set Total":"192","HP":"70HP","URL":"https://www.serebii.net/card/rebelclash/146.shtml","artist":"Yuka Morii","owned":false,"id":51},{"Card Name":"Ferroseed","Set Name":"Sword Shield","Card Number":"130","Set Total":"202","HP":"70HP","URL":"https://www.serebii.net/card/swordshield/130.shtml","artist":"Yuka Morii","owned":false,"id":52},{"Card Name":"Venusaur & Snivy GX","Set Name":"SM Promos","Card Number":"SM229","Set Total":"","HP":"270HP","URL":"https://www.serebii.net/card/smpromos/229.shtml","artist":"Yuka Morii","owned":false,"id":53},{"Card Name":"Rowlet","Set Name":"Cosmic Eclipse","Card Number":"17","Set Total":"236","HP":"50HP","URL":"https://www.serebii.net/card/cosmiceclipse/017.shtml","artist":"Yuka Morii","owned":false,"id":54},{"Card Name":"Mimikyu","Set Name":"Cosmic Eclipse","Card Number":"97","Set Total":"236","HP":"70HP","URL":"https://www.serebii.net/card/cosmiceclipse/097.shtml","artist":"Yuka Morii","owned":false,"id":55},{"Card Name":"Fomantis","Set Name":"Unified Minds","Card Number":"15","Set Total":"236","HP":"70HP","URL":"https://www.serebii.net/card/unifiedminds/015.shtml","artist":"Yuka Morii","owned":false,"id":56},{"Card Name":"Relicanth","Set Name":"Unified Minds","Card Number":"111","Set Total":"236","HP":"90HP","URL":"https://www.serebii.net/card/unifiedminds/111.shtml","artist":"Yuka Morii","owned":false,"id":57},{"Card Name":"Venonat","Set Name":"Unbroken Bonds","Card Number":"10","Set Total":"214","HP":"60HP","URL":"https://www.serebii.net/card/unbrokenbonds/010.shtml","artist":"Yuka Morii","owned":false,"id":58},{"Card Name":"Grubbin","Set Name":"Unbroken Bonds","Card Number":"18","Set Total":"214","HP":"60HP","URL":"https://www.serebii.net/card/unbrokenbonds/018.shtml","artist":"Yuka Morii","owned":false,"id":59},{"Card Name":"Darumaka","Set Name":"Unbroken Bonds","Card Number":"23","Set Total":"214","HP":"80HP","URL":"https://www.serebii.net/card/unbrokenbonds/023.shtml","artist":"Yuka Morii","owned":false,"id":60},{"Card Name":"Sandile","Set Name":"Unbroken Bonds","Card Number":"113","Set Total":"214","HP":"60HP","URL":"https://www.serebii.net/card/unbrokenbonds/113.shtml","artist":"Yuka Morii","owned":false,"id":61},{"Card Name":"Kakuna","Set Name":"Team Up","Card Number":"4","Set Total":"181","HP":"80HP","URL":"https://www.serebii.net/card/teamup/004.shtml","artist":"Yuka Morii","owned":false,"id":62},{"Card Name":"Alolan Geodude","Set Name":"Team Up","Card Number":"35","Set Total":"181","HP":"70HP","URL":"https://www.serebii.net/card/teamup/035.shtml","artist":"Yuka Morii","owned":false,"id":63},{"Card Name":"Joltik","Set Name":"Team Up","Card Number":"47","Set Total":"181","HP":"40HP","URL":"https://www.serebii.net/card/teamup/047.shtml","artist":"Yuka Morii","owned":false,"id":64},{"Card Name":"Pancham","Set Name":"Team Up","Card Number":"81","Set Total":"181","HP":"60HP","URL":"https://www.serebii.net/card/teamup/081.shtml","artist":"Yuka Morii","owned":false,"id":65},{"Card Name":"Pachirisu","Set Name":"Lost Thunder","Card Number":"80","Set Total":"214","HP":"70HP","URL":"https://www.serebii.net/card/lostthunder/080.shtml","artist":"Yuka Morii","owned":false,"id":66},{"Card Name":"Pupitar","Set Name":"Lost Thunder","Card Number":"116","Set Total":"214","HP":"70HP","URL":"https://www.serebii.net/card/lostthunder/116.shtml","artist":"Yuka Morii","owned":false,"id":67},{"Card Name":"Alolan Dugtrio","Set Name":"Lost Thunder","Card Number":"123","Set Total":"214","HP":"90HP","URL":"https://www.serebii.net/card/lostthunder/123.shtml","artist":"Yuka Morii","owned":false,"id":68},{"Card Name":"Ralts","Set Name":"Lost Thunder","Card Number":"139","Set Total":"214","HP":"50HP","URL":"https://www.serebii.net/card/lostthunder/139.shtml","artist":"Yuka Morii","owned":false,"id":69},{"Card Name":"Shelgon","Set Name":"Dragon Majesty","Card Number":"43","Set Total":"70","HP":"80HP","URL":"https://www.serebii.net/card/dragonmajesty/043.shtml","artist":"Yuka Morii","owned":false,"id":70},{"Card Name":"Gulpin","Set Name":"Celestial Storm","Card Number":"57","Set Total":"168","HP":"60HP","URL":"https://www.serebii.net/card/celestialstorm/057.shtml","artist":"Yuka Morii","owned":false,"id":71},{"Card Name":"Swalot","Set Name":"Celestial Storm","Card Number":"58","Set Total":"168","HP":"120HP","URL":"https://www.serebii.net/card/celestialstorm/058.shtml","artist":"Yuka Morii","owned":false,"id":72},{"Card Name":"Exeggcute","Set Name":"Forbidden Light","Card Number":"1","Set Total":"131","HP":"40HP","URL":"https://www.serebii.net/card/forbiddenlight/001.shtml","artist":"Yuka Morii","owned":false,"id":73},{"Card Name":"Litleo","Set Name":"Forbidden Light","Card Number":"18","Set Total":"131","HP":"70HP","URL":"https://www.serebii.net/card/forbiddenlight/018.shtml","artist":"Yuka Morii","owned":false,"id":74},{"Card Name":"Binacle","Set Name":"Forbidden Light","Card Number":"66","Set Total":"131","HP":"70HP","URL":"https://www.serebii.net/card/forbiddenlight/066.shtml","artist":"Yuka Morii","owned":false,"id":75},{"Card Name":"Starmie","Set Name":"Crimson Invasion","Card Number":"16","Set Total":"111","HP":"90HP","URL":"https://www.serebii.net/card/crimsoninvasion/016.shtml","artist":"Yuka Morii","owned":false,"id":76},{"Card Name":"Primeape","Set Name":"Crimson Invasion","Card Number":"51","Set Total":"111","HP":"90HP","URL":"https://www.serebii.net/card/crimsoninvasion/051.shtml","artist":"Yuka Morii","owned":false,"id":77},{"Card Name":"Trubbish","Set Name":"Guardians Rising","Card Number":"50","Set Total":"145","HP":"70HP","URL":"https://www.serebii.net/card/guardiansrising/050.shtml","artist":"Yuka Morii","owned":false,"id":78},{"Card Name":"Gothita","Set Name":"Guardians Rising","Card Number":"52","Set Total":"145","HP":"60HP","URL":"https://www.serebii.net/card/guardiansrising/052.shtml","artist":"Yuka Morii","owned":false,"id":79},{"Card Name":"Metapod","Set Name":"Sun Moon","Card Number":"2","Set Total":"149","HP":"80HP","URL":"https://www.serebii.net/card/sunmoon/002.shtml","artist":"Yuka Morii","owned":false,"id":80},{"Card Name":"Foongus","Set Name":"Steam Siege","Card Number":"12","Set Total":"114","HP":"40HP","URL":"https://www.serebii.net/card/steamsiege/012.shtml","artist":"Yuka Morii","owned":false,"id":81},{"Card Name":"Carbink","Set Name":"Fates Collide","Card Number":"49","Set Total":"124","HP":"80HP","URL":"https://www.serebii.net/card/fatescollide/049.shtml","artist":"Yuka Morii","owned":false,"id":82},{"Card Name":"Swirlix","Set Name":"Generations","Card Number":"RC19","Set Total":"RC32","HP":"60HP","URL":"https://www.serebii.net/card/generations/H19.shtml","artist":"Yuka Morii","owned":false,"id":83},{"Card Name":"Nuzleaf","Set Name":"BREAKPoint","Card Number":"72","Set Total":"122","HP":"80HP","URL":"https://www.serebii.net/card/breakpoint/072.shtml","artist":"Yuka Morii","owned":false,"id":84},{"Card Name":"Cacnea","Set Name":"BREAKThrough","Card Number":"4","Set Total":"162","HP":"60HP","URL":"https://www.serebii.net/card/breakthrough/004.shtml","artist":"Yuka Morii","owned":false,"id":85},{"Card Name":"Snubbull","Set Name":"BREAKThrough","Card Number":"98","Set Total":"162","HP":"70HP","URL":"https://www.serebii.net/card/breakthrough/098.shtml","artist":"Yuka Morii","owned":false,"id":86},{"Card Name":"Beldum","Set Name":"Ancient Origins","Card Number":"47","Set Total":"98","HP":"60HP","URL":"https://www.serebii.net/card/ancientorigins/047.shtml","artist":"Yuka Morii","owned":false,"id":87},{"Card Name":"Dunsparce","Set Name":"Roaring Skies","Card Number":"68","Set Total":"108","HP":"60HP","URL":"https://www.serebii.net/card/roaringskies/068.shtml","artist":"Yuka Morii","owned":false,"id":88},{"Card Name":"Hippopotas","Set Name":"Primal Clash","Card Number":"87","Set Total":"160","HP":"90HP","URL":"https://www.serebii.net/card/primalclash/087.shtml","artist":"Yuka Morii","owned":false,"id":89},{"Card Name":"Skitty","Set Name":"Primal Clash","Card Number":"113","Set Total":"160","HP":"50HP","URL":"https://www.serebii.net/card/primalclash/113.shtml","artist":"Yuka Morii","owned":false,"id":90},{"Card Name":"Sewaddle","Set Name":"Legendary Treasures","Card Number":"9","Set Total":"113","HP":"50HP","URL":"https://www.serebii.net/card/legendarytreasures/009.shtml","artist":"Yuka Morii","owned":false,"id":91},{"Card Name":"Stunfisk","Set Name":"Legendary Treasures","Card Number":"83","Set Total":"113","HP":"100HP","URL":"https://www.serebii.net/card/legendarytreasures/083.shtml","artist":"Yuka Morii","owned":false,"id":92},{"Card Name":"Bronzong","Set Name":"Triumphant","Card Number":"15","Set Total":"102","HP":"90HP","URL":"https://www.serebii.net/card/triumphant/015.shtml","artist":"Yuka Morii","owned":false,"id":93},{"Card Name":"Bronzor","Set Name":"Triumphant","Card Number":"58","Set Total":"102","HP":"60HP","URL":"https://www.serebii.net/card/triumphant/058.shtml","artist":"Yuka Morii","owned":false,"id":94},{"Card Name":"Magcargo","Set Name":"Undaunted","Card Number":"6","Set Total":"90","HP":"100HP","URL":"https://www.serebii.net/card/undaunted/006.shtml","artist":"Yuka Morii","owned":false,"id":95},{"Card Name":"Slugma","Set Name":"Undaunted","Card Number":"67","Set Total":"90","HP":"60HP","URL":"https://www.serebii.net/card/undaunted/067.shtml","artist":"Yuka Morii","owned":false,"id":96},{"Card Name":"Wobbuffet","Set Name":"HeartGold SoulSilver","Card Number":"13","Set Total":"123","HP":"90HP","URL":"https://www.serebii.net/card/heartgoldsoulsilver/013.shtml","artist":"Yuka Morii","owned":false,"id":97},{"Card Name":"Ledian","Set Name":"HeartGold SoulSilver","Card Number":"25","Set Total":"123","HP":"80HP","URL":"https://www.serebii.net/card/heartgoldsoulsilver/025.shtml","artist":"Yuka Morii","owned":false,"id":98},{"Card Name":"Sunflora","Set Name":"HeartGold SoulSilver","Card Number":"31","Set Total":"123","HP":"80HP","URL":"https://www.serebii.net/card/heartgoldsoulsilver/031.shtml","artist":"Yuka Morii","owned":false,"id":99},{"Card Name":"Ledyba","Set Name":"HeartGold SoulSilver","Card Number":"71","Set Total":"123","HP":"50HP","URL":"https://www.serebii.net/card/heartgoldsoulsilver/071.shtml","artist":"Yuka Morii","owned":false,"id":100},{"Card Name":"Sunkern","Set Name":"HeartGold SoulSilver","Card Number":"85","Set Total":"123","HP":"40HP","URL":"https://www.serebii.net/card/heartgoldsoulsilver/085.shtml","artist":"Yuka Morii","owned":false,"id":101},{"Card Name":"Squirtle","Set Name":"DPt-P","Card Number":"9","Set Total":"DPt-P","HP":"50HP","URL":"https://www.serebii.net/card/dpt-p/009.shtml","artist":"Yuka Morii","owned":false,"id":102},{"Card Name":"Bulbasaur","Set Name":"DPt-P","Card Number":"30","Set Total":"DPt-P","HP":"50HP","URL":"https://www.serebii.net/card/dpt-p/030.shtml","artist":"Yuka Morii","owned":false,"id":103},{"Card Name":"Cherubi","Set Name":"Arceus","Card Number":"60","Set Total":"99","HP":"50HP","URL":"https://www.serebii.net/card/arceus/060.shtml","artist":"Yuka Morii","owned":false,"id":104},{"Card Name":"Snorunt","Set Name":"Arceus","Card Number":"75","Set Total":"99","HP":"50HP","URL":"https://www.serebii.net/card/arceus/075.shtml","artist":"Yuka Morii","owned":false,"id":105},{"Card Name":"Minun","Set Name":"Supreme Victors","Card Number":"71","Set Total":"147","HP":"60HP","URL":"https://www.serebii.net/card/supremevictors/071.shtml","artist":"Yuka Morii","owned":false,"id":106},{"Card Name":"Plusle","Set Name":"Supreme Victors","Card Number":"76","Set Total":"147","HP":"60HP","URL":"https://www.serebii.net/card/supremevictors/076.shtml","artist":"Yuka Morii","owned":false,"id":107},{"Card Name":"Shroomish","Set Name":"Supreme Victors","Card Number":"127","Set Total":"147","HP":"60HP","URL":"https://www.serebii.net/card/supremevictors/127.shtml","artist":"Yuka Morii","owned":false,"id":108},{"Card Name":"Whismur","Set Name":"Supreme Victors","Card Number":"132","Set Total":"147","HP":"60HP","URL":"https://www.serebii.net/card/supremevictors/132.shtml","artist":"Yuka Morii","owned":false,"id":109},{"Card Name":"Lickitung","Set Name":"Platinum","Card Number":"80","Set Total":"127","HP":"90HP","URL":"https://www.serebii.net/card/platinum/080.shtml","artist":"Yuka Morii","owned":false,"id":110},{"Card Name":"Mareep","Set Name":"Platinum","Card Number":"82","Set Total":"127","HP":"60HP","URL":"https://www.serebii.net/card/platinum/082.shtml","artist":"Yuka Morii","owned":false,"id":111},{"Card Name":"Wurmple","Set Name":"Platinum","Card Number":"103","Set Total":"127","HP":"50HP","URL":"https://www.serebii.net/card/platinum/103.shtml","artist":"Yuka Morii","owned":false,"id":112},{"Card Name":"Pikachu","Set Name":"DP-P Promos","Card Number":"98","Set Total":"DP-P","HP":"60HP","URL":"https://www.serebii.net/card/dp-ppromos/098.shtml","artist":"Yuka Morii","owned":false,"id":113},{"Card Name":"Pikachu","Set Name":"DP-P Promos","Card Number":"99","Set Total":"DP-P","HP":"60HP","URL":"https://www.serebii.net/card/dp-ppromos/099.shtml","artist":"Yuka Morii","owned":false,"id":114},{"Card Name":"Pikachu","Set Name":"DP-P Promos","Card Number":"100","Set Total":"DP-P","HP":"60HP","URL":"https://www.serebii.net/card/dp-ppromos/100.shtml","artist":"Yuka Morii","owned":false,"id":115},{"Card Name":"Pikachu","Set Name":"DP-P Promos","Card Number":"101","Set Total":"DP-P","HP":"60HP","URL":"https://www.serebii.net/card/dp-ppromos/101.shtml","artist":"Yuka Morii","owned":false,"id":116},{"Card Name":"Pikachu","Set Name":"DP-P Promos","Card Number":"102","Set Total":"DP-P","HP":"60HP","URL":"https://www.serebii.net/card/dp-ppromos/102.shtml","artist":"Yuka Morii","owned":false,"id":117},{"Card Name":"Charmander","Set Name":"DP-P Promos","Card Number":"124","Set Total":"DP-P","HP":"50HP","URL":"https://www.serebii.net/card/dp-ppromos/124.shtml","artist":"Yuka Morii","owned":false,"id":118},{"Card Name":"Budew","Set Name":"Stormfront","Card Number":"33","Set Total":"100","HP":"40HP","URL":"https://www.serebii.net/card/stormfront/033.shtml","artist":"Yuka Morii","owned":false,"id":119},{"Card Name":"Bidoof","Set Name":"Stormfront","Card Number":"54","Set Total":"100","HP":"60HP","URL":"https://www.serebii.net/card/stormfront/054.shtml","artist":"Yuka Morii","owned":false,"id":120},{"Card Name":"Larvitar","Set Name":"Stormfront","Card Number":"63","Set Total":"100","HP":"50HP","URL":"https://www.serebii.net/card/stormfront/063.shtml","artist":"Yuka Morii","owned":false,"id":121},{"Card Name":"Happiny","Set Name":"POP Series 8","Card Number":"14","Set Total":"17","HP":"60HP","URL":"https://www.serebii.net/card/popseries8/014.shtml","artist":"Yuka Morii","owned":false,"id":122},{"Card Name":"Happiny","Set Name":"Mysterious Treasures","Card Number":"52","Set Total":"123","HP":"60HP","URL":"https://www.serebii.net/card/mysterioustreasures/052.shtml","artist":"Yuka Morii","owned":false,"id":123},{"Card Name":"Aron","Set Name":"Mysterious Treasures","Card Number":"71","Set Total":"123","HP":"50HP","URL":"https://www.serebii.net/card/mysterioustreasures/071.shtml","artist":"Yuka Morii","owned":false,"id":124},{"Card Name":"Pichu","Set Name":"Mysterious Treasures","Card Number":"93","Set Total":"123","HP":"40HP","URL":"https://www.serebii.net/card/mysterioustreasures/093.shtml","artist":"Yuka Morii","owned":false,"id":125},{"Card Name":"Slakoth","Set Name":"Mysterious Treasures","Card Number":"99","Set Total":"123","HP":"50HP","URL":"https://www.serebii.net/card/mysterioustreasures/099.shtml","artist":"Yuka Morii","owned":false,"id":126},{"Card Name":"Teddiursa","Set Name":"Mysterious Treasures","Card Number":"105","Set Total":"123","HP":"60HP","URL":"https://www.serebii.net/card/mysterioustreasures/105.shtml","artist":"Yuka Morii","owned":false,"id":127},{"Card Name":"Treecko","Set Name":"PCG Promos","Card Number":"37","Set Total":"PCG-P","HP":"40HP","URL":"https://www.serebii.net/card/pcgpromos/037.shtml","artist":"Yuka Morii","owned":false,"id":128},{"Card Name":"Croconaw δ","Set Name":"EX Dragon Frontiers","Card Number":"27","Set Total":"101","HP":"70HP","URL":"https://www.serebii.net/card/exdragonfrontiers/027.shtml","artist":"Yuka Morii","owned":false,"id":129},{"Card Name":"Flaaffy δ","Set Name":"EX Dragon Frontiers","Card Number":"30","Set Total":"101","HP":"70HP","URL":"https://www.serebii.net/card/exdragonfrontiers/030.shtml","artist":"Yuka Morii","owned":false,"id":130},{"Card Name":"Chikorita δ","Set Name":"EX Dragon Frontiers","Card Number":"44","Set Total":"101","HP":"40HP","URL":"https://www.serebii.net/card/exdragonfrontiers/044.shtml","artist":"Yuka Morii","owned":false,"id":131},{"Card Name":"Ekans δ","Set Name":"EX Dragon Frontiers","Card Number":"47","Set Total":"101","HP":"50HP","URL":"https://www.serebii.net/card/exdragonfrontiers/047.shtml","artist":"Yuka Morii","owned":false,"id":132},{"Card Name":"Ditto","Set Name":"POP Series 3","Card Number":"12","Set Total":"17","HP":"60HP","URL":"https://www.serebii.net/card/popseries3/012.shtml","artist":"Yuka Morii","owned":false,"id":133},{"Card Name":"Magby","Set Name":"EX Legend Maker","Card Number":"58","Set Total":"92","HP":"40HP","URL":"https://www.serebii.net/card/exlegendmaker/058.shtml","artist":"Yuka Morii","owned":false,"id":134},{"Card Name":"Seedot","Set Name":"EX Legend Maker","Card Number":"61","Set Total":"92","HP":"40HP","URL":"https://www.serebii.net/card/exlegendmaker/061.shtml","artist":"Yuka Morii","owned":false,"id":135},{"Card Name":"Wynaut","Set Name":"EX Legend Maker","Card Number":"71","Set Total":"92","HP":"50HP","URL":"https://www.serebii.net/card/exlegendmaker/071.shtml","artist":"Yuka Morii","owned":false,"id":136},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"35","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/035.shtml","artist":"Yuka Morii","owned":false,"id":137},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"36","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/036.shtml","artist":"Yuka Morii","owned":false,"id":138},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"37","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/037.shtml","artist":"Yuka Morii","owned":false,"id":139},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"38","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/038.shtml","artist":"Yuka Morii","owned":false,"id":140},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"39","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/039.shtml","artist":"Yuka Morii","owned":false,"id":141},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"40","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/040.shtml","artist":"Yuka Morii","owned":false,"id":142},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"61","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/061.shtml","artist":"Yuka Morii","owned":false,"id":143},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"62","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/062.shtml","artist":"Yuka Morii","owned":false,"id":144},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"63","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/063.shtml","artist":"Yuka Morii","owned":false,"id":145},{"Card Name":"Ditto","Set Name":"EX Delta Species","Card Number":"64","Set Total":"113","HP":"60HP","URL":"https://www.serebii.net/card/exdeltaspecies/064.shtml","artist":"Yuka Morii","owned":false,"id":146},{"Card Name":"Pikachu","Set Name":"POP Series 2","Card Number":"16","Set Total":"17","HP":"40HP","URL":"https://www.serebii.net/card/popseries2/016.shtml","artist":"Yuka Morii","owned":false,"id":147},{"Card Name":"Oricorio ex","Set Name":"Mega Promos","Card Number":"24","Set Total":"","HP":"190HP","URL":"https://www.serebii.net/card/megapromos/024.shtml","artist":"Shinji Kanda","owned":false,"id":148},{"Card Name":"Talonflame","Set Name":"Nihil Zero","Card Number":"14","Set Total":"80","HP":"150HP","URL":"https://www.serebii.net/card/nihilzero/014.shtml","artist":"Shinji Kanda","owned":false,"id":149},{"Card Name":"Duraludon","Set Name":"Phantasmal Flames","Card Number":"74","Set Total":"94","HP":"130HP","URL":"https://www.serebii.net/card/phantasmalflames/074.shtml","artist":"Shinji Kanda","owned":false,"id":150},{"Card Name":"Sandshrew","Set Name":"Mega Evolution","Card Number":"68","Set Total":"132","HP":"70HP","URL":"https://www.serebii.net/card/megaevolution/068.shtml","artist":"Shinji Kanda","owned":false,"id":151},{"Card Name":"Magneton","Set Name":"SV Promos","Card Number":"159","Set Total":"","HP":"100HP","URL":"https://www.serebii.net/card/svpromos/159.shtml","artist":"Shinji Kanda","owned":false,"id":152},{"Card Name":"Seismitoad","Set Name":"Black Bolt","Card Number":"105","Set Total":"86","HP":"170HP","URL":"https://www.serebii.net/card/blackbolt/105.shtml","artist":"Shinji Kanda","owned":false,"id":153},{"Card Name":"Roaring Moon ex","Set Name":"Prismatic Evolutions","Card Number":"162","Set Total":"131","HP":"230HP","URL":"https://www.serebii.net/card/prismaticevolutions/162.shtml","artist":"Shinji Kanda","owned":false,"id":154},{"Card Name":"Kecleon","Set Name":"Surging Sparks","Card Number":"150","Set Total":"191","HP":"70HP","URL":"https://www.serebii.net/card/surgingsparks/150.shtml","artist":"Shinji Kanda","owned":false,"id":155},{"Card Name":"Iron Moth","Set Name":"Shrouded Fable","Card Number":"9","Set Total":"64","HP":"120HP","URL":"https://www.serebii.net/card/shroudedfable/009.shtml","artist":"Shinji Kanda","owned":false,"id":156},{"Card Name":"Slither Wing","Set Name":"Shrouded Fable","Card Number":"26","Set Total":"64","HP":"140HP","URL":"https://www.serebii.net/card/shroudedfable/026.shtml","artist":"Shinji Kanda","owned":false,"id":157},{"Card Name":"Girafarig","Set Name":"Twilight Masquerade","Card Number":"83","Set Total":"167","HP":"100HP","URL":"https://www.serebii.net/card/twilightmasquerade/083.shtml","artist":"Shinji Kanda","owned":false,"id":158},{"Card Name":"Sharpedo","Set Name":"Temporal Forces","Card Number":"43","Set Total":"162","HP":"120HP","URL":"https://www.serebii.net/card/temporalforces/043.shtml","artist":"Shinji Kanda","owned":false,"id":159},{"Card Name":"Blitzle","Set Name":"Paradox Rift","Card Number":"62","Set Total":"182","HP":"60HP","URL":"https://www.serebii.net/card/paradoxrift/062.shtml","artist":"Shinji Kanda","owned":false,"id":160},{"Card Name":"Absol","Set Name":"Paradox Rift","Card Number":"113","Set Total":"182","HP":"100HP","URL":"https://www.serebii.net/card/paradoxrift/113.shtml","artist":"Shinji Kanda","owned":false,"id":161},{"Card Name":"Aerodactyl","Set Name":"151","Card Number":"142","Set Total":"165","HP":"130HP","URL":"https://www.serebii.net/card/151/142.shtml","artist":"Shinji Kanda","owned":false,"id":162},{"Card Name":"Bronzor","Set Name":"Obsidian Flames","Card Number":"144","Set Total":"197","HP":"70HP","URL":"https://www.serebii.net/card/obsidianflames/144.shtml","artist":"Shinji Kanda","owned":false,"id":163},{"Card Name":"Magikarp","Set Name":"Paldea Evolved","Card Number":"203","Set Total":"198","HP":"30HP","URL":"https://www.serebii.net/card/paldeaevolved/203.shtml","artist":"Shinji Kanda","owned":false,"id":164},{"Card Name":"Slowbro","Set Name":"Scarlet Violet","Card Number":"43","Set Total":"198","HP":"100HP","URL":"https://www.serebii.net/card/scarletviolet/043.shtml","artist":"Shinji Kanda","owned":false,"id":165},{"Card Name":"Alomomola","Set Name":"Scarlet Violet","Card Number":"48","Set Total":"198","HP":"120HP","URL":"https://www.serebii.net/card/scarletviolet/048.shtml","artist":"Shinji Kanda","owned":false,"id":166},{"Card Name":"Moltres","Set Name":"SWSH Promos","Card Number":"SWSH185","Set Total":"","HP":"120HP","URL":"https://www.serebii.net/card/swshpromos/185.shtml","artist":"Shinji Kanda","owned":false,"id":167},{"Card Name":"Galarian Moltres","Set Name":"SWSH Promos","Card Number":"SWSH284","Set Total":"","HP":"120HP","URL":"https://www.serebii.net/card/swshpromos/284.shtml","artist":"Shinji Kanda","owned":false,"id":168},{"Card Name":"Stunfisk","Set Name":"Silver Tempest","Card Number":"55","Set Total":"195","HP":"110HP","URL":"https://www.serebii.net/card/silvertempest/055.shtml","artist":"Shinji Kanda","owned":false,"id":169},{"Card Name":"Hypno","Set Name":"Silver Tempest","Card Number":"61","Set Total":"195","HP":"110HP","URL":"https://www.serebii.net/card/silvertempest/061.shtml","artist":"Shinji Kanda","owned":false,"id":170},{"Card Name":"Beheeyem","Set Name":"Silver Tempest","Card Number":"80","Set Total":"195","HP":"90HP","URL":"https://www.serebii.net/card/silvertempest/080.shtml","artist":"Shinji Kanda","owned":false,"id":171},{"Card Name":"Ariados","Set Name":"Lost Origin","Card Number":"113","Set Total":"196","HP":"90HP","URL":"https://www.serebii.net/card/lostorigin/113.shtml","artist":"Shinji Kanda","owned":false,"id":172},{"Card Name":"Giratina V","Set Name":"Lost Origin","Card Number":"186","Set Total":"196","HP":"220HP","URL":"https://www.serebii.net/card/lostorigin/186.shtml","artist":"Shinji Kanda","owned":false,"id":173},{"Card Name":"Whiscash","Set Name":"Astral Radiance","Card Number":"36","Set Total":"189","HP":"120HP","URL":"https://www.serebii.net/card/astralradiance/036.shtml","artist":"Shinji Kanda","owned":false,"id":174},{"Card Name":"Bronzong","Set Name":"Astral Radiance","Card Number":"112","Set Total":"189","HP":"130HP","URL":"https://www.serebii.net/card/astralradiance/112.shtml","artist":"Shinji Kanda","owned":false,"id":175},{"Card Name":"Magmar","Set Name":"Brilliant Stars","Card Number":"19","Set Total":"172","HP":"90HP","URL":"https://www.serebii.net/card/brilliantstars/019.shtml","artist":"Shinji Kanda","owned":false,"id":176},{"Card Name":"Sawk","Set Name":"Brilliant Stars","Card Number":"81","Set Total":"172","HP":"90HP","URL":"https://www.serebii.net/card/brilliantstars/081.shtml","artist":"Shinji Kanda","owned":false,"id":177},{"Card Name":"Audino","Set Name":"Black Bolt","Card Number":"151","Set Total":"86","HP":"100HP","URL":"https://www.serebii.net/card/blackbolt/151.shtml","artist":"Asako Ito","owned":false,"id":178},{"Card Name":"Dunsparce","Set Name":"Journey Together","Card Number":"120","Set Total":"159","HP":"70HP","URL":"https://www.serebii.net/card/journeytogether/120.shtml","artist":"Asako Ito","owned":false,"id":179},{"Card Name":"Sandygast","Set Name":"Twilight Masquerade","Card Number":"91","Set Total":"167","HP":"90HP","URL":"https://www.serebii.net/card/twilightmasquerade/091.shtml","artist":"Asako Ito","owned":false,"id":180},{"Card Name":"Seedot","Set Name":"Temporal Forces","Card Number":"3","Set Total":"162","HP":"60HP","URL":"https://www.serebii.net/card/temporalforces/003.shtml","artist":"Asako Ito","owned":false,"id":181},{"Card Name":"Snorlax","Set Name":"Crown Zenith","Card Number":"109","Set Total":"159","HP":"160HP","URL":"https://www.serebii.net/card/crownzenith/109.shtml","artist":"Asako Ito","owned":false,"id":182},{"Card Name":"Altaria","Set Name":"Crown Zenith","Card Number":"GG19","Set Total":"GG70","HP":"90HP","URL":"https://www.serebii.net/card/crownzenith/H19.shtml","artist":"Asako Ito","owned":false,"id":183},{"Card Name":"Espurr","Set Name":"Silver Tempest","Card Number":"81","Set Total":"195","HP":"60HP","URL":"https://www.serebii.net/card/silvertempest/081.shtml","artist":"Asako Ito","owned":false,"id":184},{"Card Name":"Swirlix","Set Name":"Silver Tempest","Card Number":"83","Set Total":"195","HP":"60HP","URL":"https://www.serebii.net/card/silvertempest/083.shtml","artist":"Asako Ito","owned":false,"id":185},{"Card Name":"Blipbug","Set Name":"Lost Origin","Card Number":"18","Set Total":"196","HP":"50HP","URL":"https://www.serebii.net/card/lostorigin/018.shtml","artist":"Asako Ito","owned":false,"id":186},{"Card Name":"Grubbin","Set Name":"Fusion Strike","Card Number":"18","Set Total":"264","HP":"70HP","URL":"https://www.serebii.net/card/fusionstrike/018.shtml","artist":"Asako Ito","owned":false,"id":187},{"Card Name":"Wigglytuff","Set Name":"Fusion Strike","Card Number":"111","Set Total":"264","HP":"120HP","URL":"https://www.serebii.net/card/fusionstrike/111.shtml","artist":"Asako Ito","owned":false,"id":188},{"Card Name":"Castform","Set Name":"Chilling Reign","Card Number":"121","Set Total":"198","HP":"70HP","URL":"https://www.serebii.net/card/chillingreign/121.shtml","artist":"Asako Ito","owned":false,"id":189},{"Card Name":"Zubat","Set Name":"Battle Styles","Card Number":"89","Set Total":"163","HP":"50HP","URL":"https://www.serebii.net/card/battlestyles/089.shtml","artist":"Asako Ito","owned":false,"id":190},{"Card Name":"Chimecho","Set Name":"Vivid Voltage","Card Number":"72","Set Total":"180","HP":"70HP","URL":"https://www.serebii.net/card/vividvoltage/072.shtml","artist":"Asako Ito","owned":false,"id":191},{"Card Name":"Trapinch","Set Name":"Darkness Ablaze","Card Number":"89","Set Total":"189","HP":"60HP","URL":"https://www.serebii.net/card/darknessablaze/089.shtml","artist":"Asako Ito","owned":false,"id":192},{"Card Name":"Metapod","Set Name":"Rebel Clash","Card Number":"2","Set Total":"192","HP":"80HP","URL":"https://www.serebii.net/card/rebelclash/002.shtml","artist":"Asako Ito","owned":false,"id":193},{"Card Name":"Munna","Set Name":"Sword Shield","Card Number":"87","Set Total":"202","HP":"70HP","URL":"https://www.serebii.net/card/swordshield/087.shtml","artist":"Asako Ito","owned":false,"id":194},{"Card Name":"Tympole","Set Name":"Cosmic Eclipse","Card Number":"58","Set Total":"236","HP":"60HP","URL":"https://www.serebii.net/card/cosmiceclipse/058.shtml","artist":"Asako Ito","owned":false,"id":195},{"Card Name":"Azurill","Set Name":"Cosmic Eclipse","Card Number":"146","Set Total":"236","HP":"60HP","URL":"https://www.serebii.net/card/cosmiceclipse/146.shtml","artist":"Asako Ito","owned":false,"id":196},{"Card Name":"Gible","Set Name":"Unified Minds","Card Number":"112","Set Total":"236","HP":"60HP","URL":"https://www.serebii.net/card/unifiedminds/112.shtml","artist":"Asako Ito","owned":false,"id":197},{"Card Name":"Cottonee","Set Name":"Unified Minds","Card Number":"143","Set Total":"236","HP":"60HP","URL":"https://www.serebii.net/card/unifiedminds/143.shtml","artist":"Asako Ito","owned":false,"id":198},{"Card Name":"Oddish","Set Name":"Unbroken Bonds","Card Number":"6","Set Total":"214","HP":"60HP","URL":"https://www.serebii.net/card/unbrokenbonds/006.shtml","artist":"Asako Ito","owned":false,"id":199},{"Card Name":"Pyukumuku","Set Name":"Unbroken Bonds","Card Number":"53","Set Total":"214","HP":"70HP","URL":"https://www.serebii.net/card/unbrokenbonds/053.shtml","artist":"Asako Ito","owned":false,"id":200},{"Card Name":"Electrode","Set Name":"Team Up","Card Number":"39","Set Total":"181","HP":"90HP","URL":"https://www.serebii.net/card/teamup/039.shtml","artist":"Asako Ito","owned":false,"id":201},{"Card Name":"Litwick","Set Name":"Lost Thunder","Card Number":"101","Set Total":"214","HP":"60HP","URL":"https://www.serebii.net/card/lostthunder/101.shtml","artist":"Asako Ito","owned":false,"id":202},{"Card Name":"Phanpy","Set Name":"Lost Thunder","Card Number":"111","Set Total":"214","HP":"80HP","URL":"https://www.serebii.net/card/lostthunder/111.shtml","artist":"Asako Ito","owned":false,"id":203},{"Card Name":"Luvdisc","Set Name":"Celestial Storm","Card Number":"44","Set Total":"168","HP":"70HP","URL":"https://www.serebii.net/card/celestialstorm/044.shtml","artist":"Asako Ito","owned":false,"id":204},{"Card Name":"Shelgon","Set Name":"Celestial Storm","Card Number":"105","Set Total":"168","HP":"90HP","URL":"https://www.serebii.net/card/celestialstorm/105.shtml","artist":"Asako Ito","owned":false,"id":205},{"Card Name":"Whismur","Set Name":"Celestial Storm","Card Number":"117","Set Total":"168","HP":"70HP","URL":"https://www.serebii.net/card/celestialstorm/117.shtml","artist":"Asako Ito","owned":false,"id":206},{"Card Name":"Cherubi","Set Name":"Ultra Prism","Card Number":"10","Set Total":"156","HP":"50HP","URL":"https://www.serebii.net/card/ultraprism/010.shtml","artist":"Asako Ito","owned":false,"id":207},{"Card Name":"Drifloon","Set Name":"Ultra Prism","Card Number":"51","Set Total":"156","HP":"60HP","URL":"https://www.serebii.net/card/ultraprism/051.shtml","artist":"Asako Ito","owned":false,"id":208},{"Card Name":"Marill","Set Name":"Burning Shadows","Card Number":"34","Set Total":"147","HP":"60HP","URL":"https://www.serebii.net/card/burningshadows/034.shtml","artist":"Asako Ito","owned":false,"id":209},{"Card Name":"Tynamo","Set Name":"Burning Shadows","Card Number":"44","Set Total":"147","HP":"40HP","URL":"https://www.serebii.net/card/burningshadows/044.shtml","artist":"Asako Ito","owned":false,"id":210},{"Card Name":"Goomy","Set Name":"Guardians Rising","Card Number":"94","Set Total":"145","HP":"50HP","URL":"https://www.serebii.net/card/guardiansrising/094.shtml","artist":"Asako Ito","owned":false,"id":211},{"Card Name":"Poliwag","Set Name":"Sun Moon","Card Number":"30","Set Total":"149","HP":"60HP","URL":"https://www.serebii.net/card/sunmoon/030.shtml","artist":"Asako Ito","owned":false,"id":212}];
+
+const IMG_MAP = {
+  "https://www.serebii.net/card/phantasmalflames/9.jpg": "images/phantasmalflames__9.jpg",
+  "https://www.serebii.net/card/megaevolution/52.jpg": "images/megaevolution__52.jpg",
+  "https://www.serebii.net/card/whiteflare/70.jpg": "images/whiteflare__70.jpg",
+  "https://www.serebii.net/card/blackbolt/141.jpg": "images/blackbolt__141.jpg",
+  "https://www.serebii.net/card/destinedrivals/21.jpg": "images/destinedrivals__21.jpg",
+  "https://www.serebii.net/card/journeytogether/9.jpg": "images/journeytogether__9.jpg",
+  "https://www.serebii.net/card/surgingsparks/138.jpg": "images/surgingsparks__138.jpg",
+  "https://www.serebii.net/card/stellarcrown/43.jpg": "images/stellarcrown__43.jpg",
+  "https://www.serebii.net/card/stellarcrown/102.jpg": "images/stellarcrown__102.jpg",
+  "https://www.serebii.net/card/twilightmasquerade/56.jpg": "images/twilightmasquerade__56.jpg",
+  "https://www.serebii.net/card/temporalforces/136.jpg": "images/temporalforces__136.jpg",
+  "https://www.serebii.net/card/paradoxrift/34.jpg": "images/paradoxrift__34.jpg",
+  "https://www.serebii.net/card/paradoxrift/69.jpg": "images/paradoxrift__69.jpg",
+  "https://www.serebii.net/card/paradoxrift/211.jpg": "images/paradoxrift__211.jpg",
+  "https://www.serebii.net/card/151/81.jpg": "images/151__81.jpg",
+  "https://www.serebii.net/card/151/82.jpg": "images/151__82.jpg",
+  "https://www.serebii.net/card/obsidianflames/40.jpg": "images/obsidianflames__40.jpg",
+  "https://www.serebii.net/card/obsidianflames/81.jpg": "images/obsidianflames__81.jpg",
+  "https://www.serebii.net/card/obsidianflames/97.jpg": "images/obsidianflames__97.jpg",
+  "https://www.serebii.net/card/obsidianflames/170.jpg": "images/obsidianflames__170.jpg",
+  "https://www.serebii.net/card/paldeaevolved/72.jpg": "images/paldeaevolved__72.jpg",
+  "https://www.serebii.net/card/scarletviolet/121.jpg": "images/scarletviolet__121.jpg",
+  "https://www.serebii.net/card/scarletviolet/148.jpg": "images/scarletviolet__148.jpg",
+  "https://www.serebii.net/card/crownzenith/92.jpg": "images/crownzenith__92.jpg",
+  "https://www.serebii.net/card/crownzenith/H49.jpg": "images/crownzenith__GG49.jpg",
+  "https://www.serebii.net/card/silvertempest/93.jpg": "images/silvertempest__93.jpg",
+  "https://www.serebii.net/card/lostorigin/11.jpg": "images/lostorigin__11.jpg",
+  "https://www.serebii.net/card/lostorigin/24.jpg": "images/lostorigin__24.jpg",
+  "https://www.serebii.net/card/lostorigin/46.jpg": "images/lostorigin__46.jpg",
+  "https://www.serebii.net/card/lostorigin/86.jpg": "images/lostorigin__86.jpg",
+  "https://www.serebii.net/card/lostorigin/114.jpg": "images/lostorigin__114.jpg",
+  "https://www.serebii.net/card/pokemongo/6.jpg": "images/pokemongo__6.jpg",
+  "https://www.serebii.net/card/astralradiance/109.jpg": "images/astralradiance__109.jpg",
+  "https://www.serebii.net/card/brilliantstars/10.jpg": "images/brilliantstars__10.jpg",
+  "https://www.serebii.net/card/brilliantstars/30.jpg": "images/brilliantstars__30.jpg",
+  "https://www.serebii.net/card/fusionstrike/84.jpg": "images/fusionstrike__84.jpg",
+  "https://www.serebii.net/card/fusionstrike/95.jpg": "images/fusionstrike__95.jpg",
+  "https://www.serebii.net/card/fusionstrike/131.jpg": "images/fusionstrike__131.jpg",
+  "https://www.serebii.net/card/evolvingskies/68.jpg": "images/evolvingskies__68.jpg",
+  "https://www.serebii.net/card/evolvingskies/76.jpg": "images/evolvingskies__76.jpg",
+  "https://www.serebii.net/card/chillingreign/22.jpg": "images/chillingreign__22.jpg",
+  "https://www.serebii.net/card/chillingreign/91.jpg": "images/chillingreign__91.jpg",
+  "https://www.serebii.net/card/battlestyles/27.jpg": "images/battlestyles__27.jpg",
+  "https://www.serebii.net/card/battlestyles/29.jpg": "images/battlestyles__29.jpg",
+  "https://www.serebii.net/card/vividvoltage/77.jpg": "images/vividvoltage__77.jpg",
+  "https://www.serebii.net/card/vividvoltage/91.jpg": "images/vividvoltage__91.jpg",
+  "https://www.serebii.net/card/vividvoltage/133.jpg": "images/vividvoltage__133.jpg",
+  "https://www.serebii.net/card/champion'spath/2.jpg": "images/champion'spath__2.jpg",
+  "https://www.serebii.net/card/darknessablaze/14.jpg": "images/darknessablaze__14.jpg",
+  "https://www.serebii.net/card/darknessablaze/22.jpg": "images/darknessablaze__22.jpg",
+  "https://www.serebii.net/card/rebelclash/81.jpg": "images/rebelclash__81.jpg",
+  "https://www.serebii.net/card/rebelclash/146.jpg": "images/rebelclash__146.jpg",
+  "https://www.serebii.net/card/swordshield/130.jpg": "images/swordshield__130.jpg",
+  "https://www.serebii.net/card/smpromos/229.jpg": "images/smpromos__229.jpg",
+  "https://www.serebii.net/card/cosmiceclipse/17.jpg": "images/cosmiceclipse__17.jpg",
+  "https://www.serebii.net/card/cosmiceclipse/97.jpg": "images/cosmiceclipse__97.jpg",
+  "https://www.serebii.net/card/unifiedminds/15.jpg": "images/unifiedminds__15.jpg",
+  "https://www.serebii.net/card/unifiedminds/111.jpg": "images/unifiedminds__111.jpg",
+  "https://www.serebii.net/card/unbrokenbonds/10.jpg": "images/unbrokenbonds__10.jpg",
+  "https://www.serebii.net/card/unbrokenbonds/18.jpg": "images/unbrokenbonds__18.jpg",
+  "https://www.serebii.net/card/unbrokenbonds/23.jpg": "images/unbrokenbonds__23.jpg",
+  "https://www.serebii.net/card/unbrokenbonds/113.jpg": "images/unbrokenbonds__113.jpg",
+  "https://www.serebii.net/card/teamup/4.jpg": "images/teamup__4.jpg",
+  "https://www.serebii.net/card/teamup/35.jpg": "images/teamup__35.jpg",
+  "https://www.serebii.net/card/teamup/47.jpg": "images/teamup__47.jpg",
+  "https://www.serebii.net/card/teamup/81.jpg": "images/teamup__81.jpg",
+  "https://www.serebii.net/card/lostthunder/80.jpg": "images/lostthunder__80.jpg",
+  "https://www.serebii.net/card/lostthunder/116.jpg": "images/lostthunder__116.jpg",
+  "https://www.serebii.net/card/lostthunder/123.jpg": "images/lostthunder__123.jpg",
+  "https://www.serebii.net/card/lostthunder/139.jpg": "images/lostthunder__139.jpg",
+  "https://www.serebii.net/card/dragonmajesty/43.jpg": "images/dragonmajesty__43.jpg",
+  "https://www.serebii.net/card/celestialstorm/57.jpg": "images/celestialstorm__57.jpg",
+  "https://www.serebii.net/card/celestialstorm/58.jpg": "images/celestialstorm__58.jpg",
+  "https://www.serebii.net/card/forbiddenlight/1.jpg": "images/forbiddenlight__1.jpg",
+  "https://www.serebii.net/card/forbiddenlight/18.jpg": "images/forbiddenlight__18.jpg",
+  "https://www.serebii.net/card/forbiddenlight/66.jpg": "images/forbiddenlight__66.jpg",
+  "https://www.serebii.net/card/crimsoninvasion/16.jpg": "images/crimsoninvasion__16.jpg",
+  "https://www.serebii.net/card/crimsoninvasion/51.jpg": "images/crimsoninvasion__51.jpg",
+  "https://www.serebii.net/card/guardiansrising/50.jpg": "images/guardiansrising__50.jpg",
+  "https://www.serebii.net/card/guardiansrising/52.jpg": "images/guardiansrising__52.jpg",
+  "https://www.serebii.net/card/sunmoon/2.jpg": "images/sunmoon__2.jpg",
+  "https://www.serebii.net/card/steamsiege/12.jpg": "images/steamsiege__12.jpg",
+  "https://www.serebii.net/card/fatescollide/49.jpg": "images/fatescollide__49.jpg",
+  "https://www.serebii.net/card/generations/H19.jpg": "images/generations__RC19.jpg",
+  "https://www.serebii.net/card/breakpoint/72.jpg": "images/breakpoint__72.jpg",
+  "https://www.serebii.net/card/breakthrough/4.jpg": "images/breakthrough__4.jpg",
+  "https://www.serebii.net/card/breakthrough/98.jpg": "images/breakthrough__98.jpg",
+  "https://www.serebii.net/card/ancientorigins/47.jpg": "images/ancientorigins__47.jpg",
+  "https://www.serebii.net/card/roaringskies/68.jpg": "images/roaringskies__68.jpg",
+  "https://www.serebii.net/card/primalclash/87.jpg": "images/primalclash__87.jpg",
+  "https://www.serebii.net/card/primalclash/113.jpg": "images/primalclash__113.jpg",
+  "https://www.serebii.net/card/legendarytreasures/9.jpg": "images/legendarytreasures__9.jpg",
+  "https://www.serebii.net/card/legendarytreasures/83.jpg": "images/legendarytreasures__83.jpg",
+  "https://www.serebii.net/card/triumphant/15.jpg": "images/triumphant__15.jpg",
+  "https://www.serebii.net/card/triumphant/58.jpg": "images/triumphant__58.jpg",
+  "https://www.serebii.net/card/undaunted/6.jpg": "images/undaunted__6.jpg",
+  "https://www.serebii.net/card/undaunted/67.jpg": "images/undaunted__67.jpg",
+  "https://www.serebii.net/card/heartgoldsoulsilver/13.jpg": "images/heartgoldsoulsilver__13.jpg",
+  "https://www.serebii.net/card/heartgoldsoulsilver/25.jpg": "images/heartgoldsoulsilver__25.jpg",
+  "https://www.serebii.net/card/heartgoldsoulsilver/31.jpg": "images/heartgoldsoulsilver__31.jpg",
+  "https://www.serebii.net/card/heartgoldsoulsilver/71.jpg": "images/heartgoldsoulsilver__71.jpg",
+  "https://www.serebii.net/card/heartgoldsoulsilver/85.jpg": "images/heartgoldsoulsilver__85.jpg",
+  "https://www.serebii.net/card/dpt-p/9.jpg": "images/dpt-p__9.jpg",
+  "https://www.serebii.net/card/dpt-p/30.jpg": "images/dpt-p__30.jpg",
+  "https://www.serebii.net/card/arceus/60.jpg": "images/arceus__60.jpg",
+  "https://www.serebii.net/card/arceus/75.jpg": "images/arceus__75.jpg",
+  "https://www.serebii.net/card/supremevictors/71.jpg": "images/supremevictors__71.jpg",
+  "https://www.serebii.net/card/supremevictors/76.jpg": "images/supremevictors__76.jpg",
+  "https://www.serebii.net/card/supremevictors/127.jpg": "images/supremevictors__127.jpg",
+  "https://www.serebii.net/card/supremevictors/132.jpg": "images/supremevictors__132.jpg",
+  "https://www.serebii.net/card/platinum/80.jpg": "images/platinum__80.jpg",
+  "https://www.serebii.net/card/platinum/82.jpg": "images/platinum__82.jpg",
+  "https://www.serebii.net/card/platinum/103.jpg": "images/platinum__103.jpg",
+  "https://www.serebii.net/card/dp-ppromos/98.jpg": "images/dp-ppromos__98.jpg",
+  "https://www.serebii.net/card/dp-ppromos/99.jpg": "images/dp-ppromos__99.jpg",
+  "https://www.serebii.net/card/dp-ppromos/100.jpg": "images/dp-ppromos__100.jpg",
+  "https://www.serebii.net/card/dp-ppromos/101.jpg": "images/dp-ppromos__101.jpg",
+  "https://www.serebii.net/card/dp-ppromos/102.jpg": "images/dp-ppromos__102.jpg",
+  "https://www.serebii.net/card/dp-ppromos/124.jpg": "images/dp-ppromos__124.jpg",
+  "https://www.serebii.net/card/stormfront/33.jpg": "images/stormfront__33.jpg",
+  "https://www.serebii.net/card/stormfront/54.jpg": "images/stormfront__54.jpg",
+  "https://www.serebii.net/card/stormfront/63.jpg": "images/stormfront__63.jpg",
+  "https://www.serebii.net/card/popseries8/14.jpg": "images/popseries8__14.jpg",
+  "https://www.serebii.net/card/mysterioustreasures/52.jpg": "images/mysterioustreasures__52.jpg",
+  "https://www.serebii.net/card/mysterioustreasures/71.jpg": "images/mysterioustreasures__71.jpg",
+  "https://www.serebii.net/card/mysterioustreasures/93.jpg": "images/mysterioustreasures__93.jpg",
+  "https://www.serebii.net/card/mysterioustreasures/99.jpg": "images/mysterioustreasures__99.jpg",
+  "https://www.serebii.net/card/mysterioustreasures/105.jpg": "images/mysterioustreasures__105.jpg",
+  "https://www.serebii.net/card/pcgpromos/37.jpg": "images/pcgpromos__37.jpg",
+  "https://www.serebii.net/card/exdragonfrontiers/27.jpg": "images/exdragonfrontiers__27.jpg",
+  "https://www.serebii.net/card/exdragonfrontiers/30.jpg": "images/exdragonfrontiers__30.jpg",
+  "https://www.serebii.net/card/exdragonfrontiers/44.jpg": "images/exdragonfrontiers__44.jpg",
+  "https://www.serebii.net/card/exdragonfrontiers/47.jpg": "images/exdragonfrontiers__47.jpg",
+  "https://www.serebii.net/card/popseries3/12.jpg": "images/popseries3__12.jpg",
+  "https://www.serebii.net/card/exlegendmaker/58.jpg": "images/exlegendmaker__58.jpg",
+  "https://www.serebii.net/card/exlegendmaker/61.jpg": "images/exlegendmaker__61.jpg",
+  "https://www.serebii.net/card/exlegendmaker/71.jpg": "images/exlegendmaker__71.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/35.jpg": "images/exdeltaspecies__35.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/36.jpg": "images/exdeltaspecies__36.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/37.jpg": "images/exdeltaspecies__37.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/38.jpg": "images/exdeltaspecies__38.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/39.jpg": "images/exdeltaspecies__39.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/40.jpg": "images/exdeltaspecies__40.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/61.jpg": "images/exdeltaspecies__61.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/62.jpg": "images/exdeltaspecies__62.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/63.jpg": "images/exdeltaspecies__63.jpg",
+  "https://www.serebii.net/card/exdeltaspecies/64.jpg": "images/exdeltaspecies__64.jpg",
+  "https://www.serebii.net/card/popseries2/16.jpg": "images/popseries2__16.jpg",
+  "https://www.serebii.net/card/megapromos/24.jpg": "images/megapromos__24.jpg",
+  "https://www.serebii.net/card/nihilzero/14.jpg": "images/nihilzero__14.jpg",
+  "https://www.serebii.net/card/phantasmalflames/74.jpg": "images/phantasmalflames__74.jpg",
+  "https://www.serebii.net/card/megaevolution/68.jpg": "images/megaevolution__68.jpg",
+  "https://www.serebii.net/card/svpromos/159.jpg": "images/svpromos__159.jpg",
+  "https://www.serebii.net/card/blackbolt/105.jpg": "images/blackbolt__105.jpg",
+  "https://www.serebii.net/card/prismaticevolutions/162.jpg": "images/prismaticevolutions__162.jpg",
+  "https://www.serebii.net/card/surgingsparks/150.jpg": "images/surgingsparks__150.jpg",
+  "https://www.serebii.net/card/shroudedfable/9.jpg": "images/shroudedfable__9.jpg",
+  "https://www.serebii.net/card/shroudedfable/26.jpg": "images/shroudedfable__26.jpg",
+  "https://www.serebii.net/card/twilightmasquerade/83.jpg": "images/twilightmasquerade__83.jpg",
+  "https://www.serebii.net/card/temporalforces/43.jpg": "images/temporalforces__43.jpg",
+  "https://www.serebii.net/card/paradoxrift/62.jpg": "images/paradoxrift__62.jpg",
+  "https://www.serebii.net/card/paradoxrift/113.jpg": "images/paradoxrift__113.jpg",
+  "https://www.serebii.net/card/151/142.jpg": "images/151__142.jpg",
+  "https://www.serebii.net/card/obsidianflames/144.jpg": "images/obsidianflames__144.jpg",
+  "https://www.serebii.net/card/paldeaevolved/203.jpg": "images/paldeaevolved__203.jpg",
+  "https://www.serebii.net/card/scarletviolet/43.jpg": "images/scarletviolet__43.jpg",
+  "https://www.serebii.net/card/scarletviolet/48.jpg": "images/scarletviolet__48.jpg",
+  "https://www.serebii.net/card/swshpromos/185.jpg": "images/swshpromos__185.jpg",
+  "https://www.serebii.net/card/swshpromos/284.jpg": "images/swshpromos__284.jpg",
+  "https://www.serebii.net/card/silvertempest/55.jpg": "images/silvertempest__55.jpg",
+  "https://www.serebii.net/card/silvertempest/61.jpg": "images/silvertempest__61.jpg",
+  "https://www.serebii.net/card/silvertempest/80.jpg": "images/silvertempest__80.jpg",
+  "https://www.serebii.net/card/lostorigin/113.jpg": "images/lostorigin__113.jpg",
+  "https://www.serebii.net/card/lostorigin/186.jpg": "images/lostorigin__186.jpg",
+  "https://www.serebii.net/card/astralradiance/36.jpg": "images/astralradiance__36.jpg",
+  "https://www.serebii.net/card/astralradiance/112.jpg": "images/astralradiance__112.jpg",
+  "https://www.serebii.net/card/brilliantstars/19.jpg": "images/brilliantstars__19.jpg",
+  "https://www.serebii.net/card/brilliantstars/81.jpg": "images/brilliantstars__81.jpg",
+  "https://www.serebii.net/card/blackbolt/151.jpg": "images/blackbolt__151.jpg",
+  "https://www.serebii.net/card/journeytogether/120.jpg": "images/journeytogether__120.jpg",
+  "https://www.serebii.net/card/twilightmasquerade/91.jpg": "images/twilightmasquerade__91.jpg",
+  "https://www.serebii.net/card/temporalforces/3.jpg": "images/temporalforces__3.jpg",
+  "https://www.serebii.net/card/crownzenith/109.jpg": "images/crownzenith__109.jpg",
+  "https://www.serebii.net/card/crownzenith/H19.jpg": "images/crownzenith__GG19.jpg",
+  "https://www.serebii.net/card/silvertempest/81.jpg": "images/silvertempest__81.jpg",
+  "https://www.serebii.net/card/silvertempest/83.jpg": "images/silvertempest__83.jpg",
+  "https://www.serebii.net/card/lostorigin/18.jpg": "images/lostorigin__18.jpg",
+  "https://www.serebii.net/card/fusionstrike/18.jpg": "images/fusionstrike__18.jpg",
+  "https://www.serebii.net/card/fusionstrike/111.jpg": "images/fusionstrike__111.jpg",
+  "https://www.serebii.net/card/chillingreign/121.jpg": "images/chillingreign__121.jpg",
+  "https://www.serebii.net/card/battlestyles/89.jpg": "images/battlestyles__89.jpg",
+  "https://www.serebii.net/card/vividvoltage/72.jpg": "images/vividvoltage__72.jpg",
+  "https://www.serebii.net/card/darknessablaze/89.jpg": "images/darknessablaze__89.jpg",
+  "https://www.serebii.net/card/rebelclash/2.jpg": "images/rebelclash__2.jpg",
+  "https://www.serebii.net/card/swordshield/87.jpg": "images/swordshield__87.jpg",
+  "https://www.serebii.net/card/cosmiceclipse/58.jpg": "images/cosmiceclipse__58.jpg",
+  "https://www.serebii.net/card/cosmiceclipse/146.jpg": "images/cosmiceclipse__146.jpg",
+  "https://www.serebii.net/card/unifiedminds/112.jpg": "images/unifiedminds__112.jpg",
+  "https://www.serebii.net/card/unifiedminds/143.jpg": "images/unifiedminds__143.jpg",
+  "https://www.serebii.net/card/unbrokenbonds/6.jpg": "images/unbrokenbonds__6.jpg",
+  "https://www.serebii.net/card/unbrokenbonds/53.jpg": "images/unbrokenbonds__53.jpg",
+  "https://www.serebii.net/card/teamup/39.jpg": "images/teamup__39.jpg",
+  "https://www.serebii.net/card/lostthunder/101.jpg": "images/lostthunder__101.jpg",
+  "https://www.serebii.net/card/lostthunder/111.jpg": "images/lostthunder__111.jpg",
+  "https://www.serebii.net/card/celestialstorm/44.jpg": "images/celestialstorm__44.jpg",
+  "https://www.serebii.net/card/celestialstorm/105.jpg": "images/celestialstorm__105.jpg",
+  "https://www.serebii.net/card/celestialstorm/117.jpg": "images/celestialstorm__117.jpg",
+  "https://www.serebii.net/card/ultraprism/10.jpg": "images/ultraprism__10.jpg",
+  "https://www.serebii.net/card/ultraprism/51.jpg": "images/ultraprism__51.jpg",
+  "https://www.serebii.net/card/burningshadows/34.jpg": "images/burningshadows__34.jpg",
+  "https://www.serebii.net/card/burningshadows/44.jpg": "images/burningshadows__44.jpg",
+  "https://www.serebii.net/card/guardiansrising/94.jpg": "images/guardiansrising__94.jpg",
+  "https://www.serebii.net/card/sunmoon/30.jpg": "images/sunmoon__30.jpg"
+};
+
+// ── IMAGE URL ──────────────────────────────────────────────────────────────
+// Known cards where Serebii doesn't host the image — use Scrydex CDN instead
+const SCRYDEX_OVERRIDES = {
+  'https://www.serebii.net/card/crownzenith/H19.shtml':   'https://images.scrydex.com/pokemon/swsh12pt5gg-GG19/large',
+  'https://www.serebii.net/card/crownzenith/H49.shtml':   'https://images.scrydex.com/pokemon/swsh12pt5gg-GG49/large',
+  'https://www.serebii.net/card/generations/H19.shtml':   'https://images.scrydex.com/pokemon/g1-RC19/large',
+};
+function remoteImageUrl(shtml) {
+  if (SCRYDEX_OVERRIDES[shtml]) return SCRYDEX_OVERRIDES[shtml];
+  const jpg = shtml.replace('.shtml', '.jpg');
+  return jpg.replace(/\/([0-9]+)\.jpg$/, (_, n) => '/' + parseInt(n, 10) + '.jpg');
+}
+function imageUrl(shtml) {
+  const remote = remoteImageUrl(shtml);
+  // Use local file if available, otherwise fall back to Serebii
+  return IMG_MAP[remote] || remote;
+}
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'tcg_owned_v1';
+let cards = RAW.map(c => ({...c}));
+let artistFilter = 'all';
+let ownedFilter  = 'all';
+let sortMode     = 'name';
+let searchQ      = '';
+let viewMode     = 'grid';
+let visibleIds   = [];
+let lightboxId   = null;
+
+function loadOwned() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    cards.forEach(c => { if (saved[c.id]) c.owned = true; });
+  } catch(e) {}
+}
+function saveOwned() {
+  const obj = {};
+  cards.forEach(c => { if (c.owned) obj[c.id] = true; });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+}
+
+// ── ARTIST SLUG ─────────────────────────────────────────────────────────────
+function artistSlug(a) {
+  if (a === 'Yuka Morii')   return 'yuka';
+  if (a === 'Shinji Kanda') return 'shinji';
+  return 'asako';
+}
+
+// ── FILTER + SORT ────────────────────────────────────────────────────────────
+function getFiltered() {
+  let list = cards.filter(c => {
+    if (artistFilter !== 'all' && c.artist !== artistFilter) return false;
+    if (ownedFilter === 'owned'   && !c.owned)  return false;
+    if (ownedFilter === 'missing' &&  c.owned)  return false;
+    if (searchQ) {
+      const q = searchQ.toLowerCase();
+      if (!c['Card Name'].toLowerCase().includes(q) &&
+          !c['Set Name'].toLowerCase().includes(q) &&
+          !c.artist.toLowerCase().includes(q) &&
+          !c['Card Number'].toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+  list.sort((a, b) => {
+    switch(sortMode) {
+      case 'name':    return a['Card Name'].localeCompare(b['Card Name']);
+      case 'set':     return a['Set Name'].localeCompare(b['Set Name']) || a['Card Name'].localeCompare(b['Card Name']);
+      case 'artist':  return a.artist.localeCompare(b.artist) || a['Card Name'].localeCompare(b['Card Name']);
+      case 'hp-desc': return (parseInt(b.HP)||0) - (parseInt(a.HP)||0);
+      case 'hp-asc':  return (parseInt(a.HP)||0) - (parseInt(b.HP)||0);
+    }
+    return 0;
+  });
+  return list;
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────────
+function render() {
+  const list = getFiltered();
+  visibleIds = list.map(c => c.id);
+  const grid  = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  const info  = document.getElementById('result-info');
+  if (list.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = '';
+    info.textContent = '';
+  } else {
+    empty.style.display = 'none';
+    info.textContent = `Showing ${list.length} of ${cards.length} cards`;
+    grid.innerHTML = list.map(c => cardHTML(c)).join('');
+    // Lazy-load images
+    grid.querySelectorAll('.card-img').forEach(img => {
+      if (img.dataset.src) {
+        img.src = img.dataset.src;
+        img.onload  = () => { img.classList.add('loaded'); img.closest('.card-img-wrap').querySelector('.card-img-placeholder').classList.add('hidden'); };
+        img.onerror = () => {
+          // Local file not found — fall back to Serebii remote URL
+          const remote = img.dataset.remote;
+          if (remote && img.src !== remote) {
+            img.src = remote;
+          } else {
+            img.style.display = 'none';
+          }
+        };
+      }
+    });
+  }
+  updateStats();
+}
+
+function cardHTML(c) {
+  const slug    = artistSlug(c.artist);
+  const numDisp = c['Set Total'] ? `${c['Card Number']} / ${c['Set Total']}` : c['Card Number'];
+  const imgSrc  = imageUrl(c.URL);
+  return `<div class="card${c.owned ? ' owned' : ''}" data-id="${c.id}">
+    <div class="card-img-wrap">
+      <div class="artist-bar ab-${slug}"></div>
+      <div class="card-img-placeholder">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+      </div>
+      <img class="card-img" data-src="${imgSrc}" alt="${c['Card Name']}" loading="lazy" data-remote="${remoteImageUrl(c.URL)}">
+      <div class="owned-overlay">
+        <div class="owned-overlay-check">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0d0f14" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+      </div>
+    </div>
+    <div class="card-info">
+      <div class="card-name">${c['Card Name']}</div>
+      <div class="card-set-row">
+        <div class="card-set">${c['Set Name']}</div>
+        <div class="card-num">${numDisp}</div>
+      </div>
+      <div class="card-footer-row">
+        <span class="artist-tag artist-${slug}">${c.artist}</span>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          ${c.HP ? `<span class="hp-tag">${c.HP}</span>` : ''}
+          <a class="serebii-link" href="${c.URL}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function updateStats() {
+  const owned = cards.filter(c => c.owned).length;
+  const total = cards.length;
+  const pct   = total ? Math.round(owned/total*100) : 0;
+  document.getElementById('stat-owned').textContent = owned;
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-pct').textContent   = pct + '%';
+  ['Yuka Morii','Shinji Kanda','Asako Ito'].forEach(artist => {
+    const slug = artistSlug(artist);
+    const all  = cards.filter(c => c.artist === artist);
+    const own  = all.filter(c => c.owned).length;
+    const p    = all.length ? Math.round(own/all.length*100) : 0;
+    document.getElementById(`bar-${slug}`).style.width = p + '%';
+    document.getElementById(`pct-${slug}`).textContent = p + '%';
+  });
+}
+
+// ── LIGHTBOX ──────────────────────────────────────────────────────────────────
+function openLightbox(id) {
+  const c = cards.find(x => x.id === id);
+  if (!c) return;
+  lightboxId = id;
+  const lb = document.getElementById('lightbox');
+  const lbImg = document.getElementById('lb-img');
+  lbImg.src = imageUrl(c.URL);
+  lbImg.onerror = () => { const rem = remoteImageUrl(c.URL); if (lbImg.src !== rem) lbImg.src = rem; };
+  document.getElementById('lb-name').textContent = c['Card Name'];
+  document.getElementById('lb-set').textContent = c['Set Name'];
+  document.getElementById('lb-num').textContent = c['Set Total'] ? `${c['Card Number']} / ${c['Set Total']}` : c['Card Number'];
+  document.getElementById('lb-hp').textContent = c.HP || '—';
+  document.getElementById('lb-artist').textContent = c.artist;
+  document.getElementById('lb-link').href = c.URL;
+  updateLbToggle(c);
+  lb.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function updateLbToggle(c) {
+  const btn = document.getElementById('lb-toggle');
+  if (c.owned) { btn.textContent = '✓ Owned — Click to Unmark'; btn.classList.add('owned-btn'); }
+  else         { btn.textContent = 'Mark as Owned';              btn.classList.remove('owned-btn'); }
+}
+
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+  lightboxId = null;
+}
+
+document.getElementById('lb-close').addEventListener('click', closeLightbox);
+document.getElementById('lightbox').addEventListener('click', e => {
+  if (e.target === document.getElementById('lightbox')) closeLightbox();
+});
+document.getElementById('lb-toggle').addEventListener('click', () => {
+  if (lightboxId === null) return;
+  const c = cards.find(x => x.id === lightboxId);
+  if (!c) return;
+  c.owned = !c.owned;
+  saveOwned();
+  updateLbToggle(c);
+  // Update grid card if visible
+  const gridCard = document.querySelector(`.card[data-id="${lightboxId}"]`);
+  if (gridCard) gridCard.classList.toggle('owned', c.owned);
+  updateStats();
+  if (ownedFilter !== 'all') setTimeout(render, 300);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+
+// ── GRID CLICK → toggle owned (short tap) or open lightbox (intent) ──────────
+let clickStartTime = 0;
+document.getElementById('grid').addEventListener('mousedown', () => { clickStartTime = Date.now(); });
+document.getElementById('grid').addEventListener('click', e => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+  const id = parseInt(card.dataset.id);
+  const elapsed = Date.now() - clickStartTime;
+  // If click was fast (<200ms) and NOT on a link, open lightbox
+  if (elapsed < 200 && !e.target.closest('a')) {
+    openLightbox(id);
+  }
+});
+
+// ── TOOLBAR EVENTS ────────────────────────────────────────────────────────────
+document.getElementById('search').addEventListener('input', e => {
+  searchQ = e.target.value.trim();
+  render();
+});
+document.querySelectorAll('[data-artist]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    artistFilter = btn.dataset.artist;
+    document.querySelectorAll('[data-artist]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+document.querySelectorAll('[data-owned]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ownedFilter = btn.dataset.owned;
+    document.querySelectorAll('[data-owned]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    render();
+  });
+});
+document.getElementById('sort').addEventListener('change', e => {
+  sortMode = e.target.value;
+  render();
+});
+document.getElementById('btn-grid').addEventListener('click', () => {
+  viewMode = 'grid';
+  document.body.classList.remove('list-view');
+  document.getElementById('btn-grid').classList.add('active');
+  document.getElementById('btn-list').classList.remove('active');
+});
+document.getElementById('btn-list').addEventListener('click', () => {
+  viewMode = 'list';
+  document.body.classList.add('list-view');
+  document.getElementById('btn-list').classList.add('active');
+  document.getElementById('btn-grid').classList.remove('active');
+});
+document.getElementById('btn-mark-visible').addEventListener('click', () => {
+  const allOwned = visibleIds.every(id => cards.find(c => c.id === id)?.owned);
+  visibleIds.forEach(id => { const c = cards.find(x => x.id === id); if (c) c.owned = !allOwned; });
+  saveOwned();
+  render();
+  const btn = document.getElementById('btn-mark-visible');
+  const orig = btn.textContent;
+  btn.textContent = allOwned ? '✗ Unmarked visible' : '✓ Marked visible!';
+  setTimeout(() => btn.textContent = orig, 1500);
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+loadOwned();
+render();
+</script>
+</body>
+</html>
